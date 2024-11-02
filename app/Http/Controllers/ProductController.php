@@ -102,11 +102,12 @@ class ProductController extends Controller
 
         if (isset($validatedData['variants']) && !empty($validatedData['variants'])) {
             $variants = json_decode($validatedData['variants'], true);
+            
         }
 
         // $result = Product;
 
-        $data = Product::with('categories')->find($product->id)->append('image_url')->makeHidden('pivot');
+        $data = Product::with(['categories', 'variants'])->find($product->id)->append('image_url')->makeHidden('pivot');
 
         return response()
             ->json([
