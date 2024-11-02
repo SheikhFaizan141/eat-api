@@ -13,6 +13,16 @@ class Product extends Model
 
     protected $fillable = ['name', 'description', 'price'];
 
+    // Hide image_path from JSON responses
+    protected $hidden = ['image_path'];
+
+
+    // Accessor for image URL
+    public function getImageUrlAttribute()
+    {
+        return $this->image_path ? asset('storage/' . $this->image_path) : null;
+    }
+
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class, 'category_product');

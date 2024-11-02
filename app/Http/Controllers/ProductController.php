@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -50,14 +53,66 @@ class ProductController extends Controller
     {
         $validatedData = $request->validate([
             'title' => 'required|max:255',
+            'description' => 'nullable|max:280',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'price' => 'required|numeric',
-            'discount_price' => 'numeric',
-            'description' => 'nullable|string',
+            'sale_price' => 'nullable|numeric',
+            'category_ids' => 'required|json', // Validate as JSON string
+            'variants' => 'json', // Validate as JSON string
         ]);
 
-        // $product = Product::create($validatedData);
+        $product = new Product([
+            'title' => $validatedData['title'],
+            'description' => $validatedData['description'],
+            'price' => $validatedData['price'],
+            'sale_price' => $validatedData['sale_price'] ?? null,
+        ]);
 
-        return response()->json(['message' => 'data created'], 201);
+
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('product_images', 'public');
+
+            // dd($imagePath);
+            $product->image_path = $imagePath;
+        }
+
+        $product->save();
+        
+        if (isset($validatedData['category_ids']) && !empty($validatedData['category_ids'])) {
+            $categoryIds = json_decode($validatedData['category_ids'], true);
+
+            if (!is_array($categoryIds)) {
+                return response()->json(["message" => "categories id's must be of type array"], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Retrieve existing category IDs from the database
+            $existingCategoryIds = Category::whereIn('id', $categoryIds)->pluck('id')->toArray();
+
+            // Find any missing category IDs
+            $missingCategoryIds = array_diff($categoryIds, $existingCategoryIds);
+            if (!empty($missingCategoryIds)) {
+                return response()->json([
+                    "message" => "Some category IDs do not exist",
+                    "missing_ids" => $missingCategoryIds
+                ], Response::HTTP_BAD_REQUEST);
+            }
+            
+            $product->categories()->attach($categoryIds);
+        }
+
+        if (isset($validatedData['variants']) && !empty($validatedData['variants'])) {
+            $variants = json_decode($validatedData['variants'], true);
+        }
+
+        // $result = Product;
+
+        $data = Product::with('categories')->find($product->id)->append('image_url')->makeHidden('pivot');
+
+        return response()
+            ->json([
+                'message' => 'data created',
+                'data' => $data
+            ], Response::HTTP_CREATED);
     }
 
     /**
