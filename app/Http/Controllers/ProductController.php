@@ -72,6 +72,7 @@ class ProductController extends Controller
 
 
             'category_ids' => [
+                'nullable',
                 'array',
                 'distinct',
             ],
@@ -81,17 +82,10 @@ class ProductController extends Controller
             ],
 
 
-            'variant_name' => ['string', 'max:255', Rule::requiredIf($request->has('variants'))],
-            'variants' => ['nullable', 'array', Rule::requiredIf($request->has('variant_name'))],
-            'variants.*.name' => [
-                Rule::requiredIf(fn() => $request->has('variants')),
-                'string',
-                'max:100'
-            ],
-            'variants.*.price' => [
-                Rule::requiredIf(fn() => $request->has('variants')),
-                'numeric'
-            ]
+            'variant_name' => ['required_with:variants','string', 'max:255'],
+            'variants' => [ 'required_with:variant_name', 'nullable', 'array'],
+            'variants.*.name' => ['required_with:variants', 'string', 'max:100'],
+            'variants.*.price' => ['required_with:variants', 'numeric'],
         ]);
 
         // Check if validation fails
@@ -108,11 +102,11 @@ class ProductController extends Controller
             'sale_price' => $validatedData['sale_price'] ?? null,
         ]);
 
-        if (isset($validatedData['category_ids']) && !empty($validatedData['category_ids'])) {
+        if (!empty($validatedData['category_ids'])) {
             $product->categories()->attach($categoryIds);
         }
 
-        if (isset($validatedData['variant_name']) && isset($validatedData['variants']) && !empty($validatedData['variants'])) {
+        if (!empty($validatedData['variants'])) {
             foreach ($variants as $variant) {
                 Variant::create([
                     'product_id' => $product->id,
@@ -169,6 +163,6 @@ class ProductController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        
     }
 }
