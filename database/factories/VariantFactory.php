@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\Product;
 use App\Models\Variant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -21,9 +20,9 @@ class VariantFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->randomElement(['Size', 'Quantity']),
-            'option' => $this->faker->randomElement(['Small', 'Medium', 'Large', 'Regular', 'Full', 'Half']),
+            'name' => $this->faker->randomElement(['Small', 'Medium', 'Large']),
             'price' => $this->faker->randomFloat(2, 5, 20),
+            'type' => $this->faker->randomElement(['Size', 'Quantity']),
         ];
     }
     
