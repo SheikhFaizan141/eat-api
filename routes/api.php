@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -16,18 +17,14 @@ Route::get('products/{id}', [ProductController::class, 'show']);
 
 Route::post('products', [ProductController::class, 'store']);
 
-Route::get('categories', function (Request $request) {
-    $categories = Product::latest()->paginate(10);
+Route::patch('products/{id}', [ProductController::class, 'update']);
 
-    if ($categories->isEmpty()) {
-        return response()->json(['message' => 'No categories found'], Response::HTTP_NO_CONTENT);
-    }
+Route::delete('products/{product}', [ProductController::class, 'destroy']);
 
-    return response()->json($categories, Response::HTTP_OK);
-});
+Route::resource('admin/categories', AdminCategoryController::class)->except(['create', 'edit']);
 
 
-Route::get('menu', function() {
+Route::get('menu', function () {
     $products = Product::with('categories')->with(['variants' => function ($query) {
         $query->orderBy('name');
     }])->get();
@@ -36,4 +33,3 @@ Route::get('menu', function() {
     // dd($products);
     return response()->json($products);
 });
-
