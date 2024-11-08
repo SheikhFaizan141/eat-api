@@ -4,16 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Variant extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'price', 'option', 'product_id'];
+    protected $fillable = ['name', 'price', 'type', 'product_id'];
 
-    public function product()
+    public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
-
 }

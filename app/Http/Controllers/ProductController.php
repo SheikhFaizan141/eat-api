@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
+use App\Models\Variant;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -48,16 +53,77 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'title' => 'required|max:255',
-            'price' => 'required|numeric',
-            'discount_price' => 'numeric',
-            'description' => 'nullable|string',
+        $categoryIds = $request->has('category_ids') ? json_decode($request->input('category_ids'), true) : null;
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return response()->json(['error' => 'Invalid JSON format for category_ids must be json array with ids'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $variants = $request->has('variants') ? json_decode($request->input('variants'), true) : null;
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return response()->json(['error' => 'Invalid JSON format for variants'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $validator = Validator::make(array_merge($request->all(), ['variants' => $variants, 'category_ids' => $categoryIds]), [
+            'title' => ['required', 'max:255'],
+            'description' => ['nullable', 'max:280'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'sale_price' => ['numeric', 'min:0'],
+
+
+            'category_ids' => [
+                'nullable',
+                'array',
+                'distinct',
+            ],
+            'category_ids.*' => [
+                'integer',
+                Rule::exists('categories', 'id'),
+            ],
+
+
+            'variant_name' => ['required_with:variants', 'string', 'max:255'],
+            'variants' => ['required_with:variant_name', 'nullable', 'array'],
+            'variants.*.name' => ['required_with:variants', 'string', 'max:100'],
+            'variants.*.price' => ['required_with:variants', 'numeric'],
         ]);
 
-        // $product = Product::create($validatedData);
+        // Check if validation fails
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
-        return response()->json(['message' => 'data created'], 201);
+        $validatedData = $validator->validate();
+        $product = Product::create([
+            'title' => $validatedData['title'],
+            'description' => $validatedData['description'],
+            'image_path' => $request->hasFile('image') ? $request->file('image')->store('product_images', 'public') : null,
+            'price' => $validatedData['price'],
+            'sale_price' => $validatedData['sale_price'] ?? null,
+        ]);
+
+        if (!empty($validatedData['category_ids'])) {
+            $product->categories()->attach($categoryIds);
+        }
+
+        if (!empty($validatedData['variants'])) {
+            foreach ($variants as $variant) {
+                Variant::create([
+                    'product_id' => $product->id,
+                    'name' => $variant['name'],
+                    'price' => $variant['price'],
+                    'type' => $validatedData['variant_name'],
+                ]);
+            }
+        }
+
+        $data = Product::with(['categories', 'variants'])->find($product->id)->append('image_url')->makeHidden('pivot');
+
+        return response()
+            ->json([
+                'message' => 'data created',
+                'data' => $data
+            ], Response::HTTP_CREATED);
     }
 
     /**
@@ -79,24 +145,101 @@ class ProductController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
-    {
-        //
-    }
+    public function edit(string $id) {}
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Product $product)
     {
-        //
+        // $categoryIds = $request->has('category_ids') ? json_decode($request->input('category_ids'), true) : null;
+        // if (json_last_error() !== JSON_ERROR_NONE) {
+        //     return response()->json(['error' => 'Invalid JSON format for category_ids must be json array with ids'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        // }
+
+        // $variants = $request->has('variants') ? json_decode($request->input('variants'), true) : null;
+        // if (json_last_error() !== JSON_ERROR_NONE) {
+        //     return response()->json(['error' => 'Invalid JSON format for variants'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        // }
+
+        // $validator = Validator::make(array_merge($request->all(), ['variants' => $variants, 'category_ids' => $categoryIds]), [
+        //     'title' => ['required', 'max:255'],
+        //     'description' => ['nullable', 'max:280'],
+        //     'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        //     'price' => ['required', 'numeric', 'min:0'],
+        //     'sale_price' => ['numeric', 'min:0'],
+
+
+        //     'category_ids' => [
+        //         'nullable',
+        //         'array',
+        //         'distinct',
+        //     ],
+        //     'category_ids.*' => [
+        //         'integer',
+        //         Rule::exists('categories', 'id'),
+        //     ],
+
+
+        //     'variant_name' => ['required_with:variants', 'string', 'max:255'],
+        //     'variants' => ['required_with:variant_name', 'nullable', 'array'],
+        //     'variants.*.name' => ['required_with:variants', 'string', 'max:100'],
+        //     'variants.*.price' => ['required_with:variants', 'numeric'],
+        // ]);
+
+        // // Check if validation fails
+        // if ($validator->fails()) {
+        //     return response()->json(['errors' => $validator->errors()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        // }
+
+        // $validatedData = $validator->validate();
+        // $product = Product::create([
+        //     'title' => $validatedData['title'],
+        //     'description' => $validatedData['description'],
+        //     'image_path' => $request->hasFile('image') ? $request->file('image')->store('product_images', 'public') : $por,
+        //     'price' => $validatedData['price'],
+        //     'sale_price' => $validatedData['sale_price'] ?? null,
+        // ]);
+
+        // if (!empty($validatedData['category_ids'])) {
+        //     $product->categories()->attach($categoryIds);
+        // }
+
+        // if (!empty($validatedData['variants'])) {
+        //     foreach ($variants as $variant) {
+        //         Variant::create([
+        //             'product_id' => $product->id,
+        //             'name' => $variant['name'],
+        //             'price' => $variant['price'],
+        //             'type' => $validatedData['variant_name'],
+        //         ]);
+        //     }
+        // }
+
+        // $data = Product::with(['categories', 'variants'])->find($product->id)->append('image_url')->makeHidden('pivot');
+
+        // return response()
+        //     ->json([
+        //         'message' => 'data created',
+        //         'data' => $data
+        //     ], Response::HTTP_CREATED);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Product $product)
     {
-        //
+        try {
+            $destroyed = $product->delete();
+
+            if (!$destroyed) {
+                return response()->json(['message' => 'Could not delete product'], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            return response()->json(null, Response::HTTP_NO_CONTENT);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An error occurred while deleting the product'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

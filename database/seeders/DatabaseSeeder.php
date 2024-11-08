@@ -44,7 +44,7 @@ class DatabaseSeeder extends Seeder
 
         // Working
         $categories = Category::factory(5)->create();
-        $products = Product::factory()->count(10)->create();
+        $products = Product::factory()->count(5)->create();
 
         // $products->each(function ($product) use ($categories) {
         //     $product->categories()->attach($categories->random(\rand(1, 4))->pluck('id')->toArray());
@@ -58,6 +58,6 @@ class DatabaseSeeder extends Seeder
             ->each(fn($product) => $product->categories()
                 ->attach($categories->random(1)
                     ->pluck('id')->toArray()))
-            ->each(fn($product) => Variant::factory(3)->create(['product_id' => $product->id]));
+            ->each(fn($product) => Variant::factory(2)->create(['product_id' => $product->id]));
     }
 }
