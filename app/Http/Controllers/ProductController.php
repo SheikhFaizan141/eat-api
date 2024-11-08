@@ -150,11 +150,8 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Product $product)
     {
-        $product = Product::findOrFail($id);
-
-        
         // $categoryIds = $request->has('category_ids') ? json_decode($request->input('category_ids'), true) : null;
         // if (json_last_error() !== JSON_ERROR_NONE) {
         //     return response()->json(['error' => 'Invalid JSON format for category_ids must be json array with ids'], Response::HTTP_UNPROCESSABLE_ENTITY);

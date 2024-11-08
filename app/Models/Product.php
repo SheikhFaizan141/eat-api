@@ -13,6 +13,8 @@ class Product extends Model
 
     protected $fillable = ['name', 'description', 'price'];
 
+    protected $appends = ['image_url'];
+
     // Hide image_path from JSON responses
     protected $hidden = ['image_path'];
 
@@ -20,6 +22,11 @@ class Product extends Model
     // Accessor for image URL
     public function getImageUrlAttribute()
     {
+        // Check if image_path is already a valid URL
+        if (filter_var($this->image_path, FILTER_VALIDATE_URL)) {
+            return $this->image_path; 
+        }
+
         return $this->image_path ? asset('storage/' . $this->image_path) : null;
     }
 

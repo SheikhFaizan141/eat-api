@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+
 use Illuminate\Validation\Rule;
 
 class AdminCategoryController extends Controller
@@ -12,35 +14,24 @@ class AdminCategoryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        // Define allowed sort fields
-        $allowedSortFields = ['id', 'name', 'created_at'];
-
-        // Retrieve sorting parameters
         $sortField = $request->query('sort_by', 'created_at');
         $sortOrder = $request->query('order', 'desc');
 
-        // Default sorting order
-        if (!in_array($sortField, $allowedSortFields)) {
-            $sortField = 'created_at';
+        $categories = Category::sorted($sortField, $sortOrder)->paginate(10);
+
+        if ($categories->isEmpty()) {
+            return response()->json(['message' => 'No categories found'], Response::HTTP_NO_CONTENT);
         }
 
-        // Ensure valid sort order
-        $sortOrder = in_array($sortOrder, ['asc', 'desc']) ? $sortOrder : 'desc';
-        $products = Category::sorted($sortField, $sortOrder)->paginate(10);
-
-        if ($products->isEmpty()) {
-            return response()->json(['message' => 'No products found'], Response::HTTP_NO_CONTENT);
-        }
-
-        return response()->json($products, Response::HTTP_OK);
+        return response()->json($categories, Response::HTTP_OK);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $attributes = $request->validate([
             'name' => ['required', Rule::unique('categories', 'name'), 'max:255'],
@@ -58,7 +49,7 @@ class AdminCategoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Category $category)
+    public function show(Category $category): JsonResponse
     {
         return response()->json(['data' => $category], Response::HTTP_OK);
     }
@@ -66,9 +57,9 @@ class AdminCategoryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Category $category)
+    public function update(Request $request, Category $category): JsonResponse
     {
-        $attributes = request()->validate([
+        $attributes = $request->validate([
             'name' => ['required', Rule::unique('categories', 'name')->ignore($category->id), 'max:255'],
             'description' => ['nullable', 'string', 'max:1000']
         ]);
@@ -84,10 +75,11 @@ class AdminCategoryController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Category $category)
+    public function destroy(Category $category): Response
     {
         $category->delete();
 
-        return response()->json(['message' => 'Category deleted successfully'], Response::HTTP_NO_CONTENT);
+        // return response()->json(['message' => 'Category deleted successfully'], Response::HTTP_NO_CONTENT);
+        return response()->noContent();
     }
 }
