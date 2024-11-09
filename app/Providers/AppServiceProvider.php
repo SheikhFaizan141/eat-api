@@ -25,9 +25,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Model::unguard();
 
-        Gate::allows('admin', function (User $user): bool {
-            return $user->role === 'admin';
-        });
+         Gate::define('admin', fn (User $user) => $user->role === 'admin');
 
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
             return config('app.frontend_url') . "/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
